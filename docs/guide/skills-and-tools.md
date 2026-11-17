@@ -35,6 +35,24 @@ view. Built-in and user-created/imported skills are listed separately. The
 Community tab supports importing `.skill` archives into My skills.
 General preferences remain in Settings.
 
+Skill archive installation requires administrator authorization and runs the
+existing archive validation and security checks. Users without permission should
+contact their administrator. In an agent chat, `skill_manage` is available only
+when the operator enables `skill_evolution.enabled` (disabled by default). Its
+`create`, `edit` and `write_file` actions persist custom skill text for the current
+user; they are not an archive installer, an atomic multi-file import or a way to
+import arbitrary binary assets.
+
+The **find-skills** [host helper](../../skills/public/find-skills/scripts/install-skill.sh) is for operators on the host,
+run from a DeerFlow repository checkout or nested directory. It installs globally
+under the host's `.agents/skills` and links into the checkout's `skills/custom`;
+it is not the per-user installation flow. Inside an isolated agent sandbox,
+`/mnt/skills/public`, `/mnt/skills/custom` and `/mnt/skills/legacy` are read-only
+projections. A sandbox-global install, symlink or thread output file does not
+persist a skill in My skills. Use the available text-management tool or the
+authorized Community archive import instead, and report unavailable tools or
+permissions rather than claiming an installation succeeded.
+
 Failed skill requests retain their HTTP error status and a readable fallback
 when the server returns an unusable error body.
 

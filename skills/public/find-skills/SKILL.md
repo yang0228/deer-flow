@@ -7,6 +7,20 @@ description: Helps users discover and install agent skills when they ask questio
 
 This skill helps you discover and install skills from the open agent skills ecosystem.
 
+## Choose the Installation Environment First
+
+In a **DeerFlow agent sandbox**, discover skills but do not run the bundled
+`scripts/install-skill.sh` helper. It requires a host repository checkout with
+`deer-flow.code-workspace` in the current directory or an ancestor. A normal
+sandbox workspace such as `/mnt/user-data/workspace` is not that checkout.
+The projected `/mnt/skills/public`, `/mnt/skills/custom` and `/mnt/skills/legacy`
+directories are read-only; do not write or symlink into them. A sandbox-global
+`npx skills add -g` installation or files in a thread workspace/output directory
+do not persist a skill in DeerFlow's per-user catalog for future chats.
+
+Use the DeerFlow options in Step 4. The host helper is only for an operator
+managing a repository checkout, not a substitute for user-scoped installation.
+
 ## When to Use This Skill
 
 Use this skill when the user:
@@ -54,21 +68,22 @@ For example:
 - User asks "can you help me with PR reviews?" → `npx skills find pr review`
 - User asks "I need to create a changelog" → `npx skills find changelog`
 
-The command will return results like:
+Results identify skills and their catalog links, for example:
 
 ```
-Install with bash /path/to/skill/scripts/install-skill.sh vercel-labs/agent-skills@vercel-react-best-practices
-
 vercel-labs/agent-skills@vercel-react-best-practices
 └ https://skills.sh/vercel-labs/agent-skills/vercel-react-best-practices
 ```
+
+Any install command printed by an external catalog still needs the environment
+check above; it is not a DeerFlow persistence mechanism.
 
 ### Step 3: Present Options to the User
 
 When you find relevant skills, present them to the user with:
 
 1. The skill name and what it does
-2. The install command they can run
+2. The installation option appropriate to their environment (Step 4)
 3. A link to learn more at skills.sh
 
 Example response:
@@ -77,27 +92,59 @@ Example response:
 I found a skill that might help! The "vercel-react-best-practices" skill provides
 React and Next.js performance optimization guidelines from Vercel Engineering.
 
-To install it:
-bash /path/to/skill/scripts/install-skill.sh vercel-labs/agent-skills@vercel-react-best-practices
+In DeerFlow, a complete .skill archive can be imported through
+Capability Center > Skills > Community with administrator permissions.
 
 Learn more: https://skills.sh/vercel-labs/agent-skills/vercel-react-best-practices
 ```
 
 ### Step 4: Install the Skill
 
-If the user wants to proceed, use the `install-skill.sh` script to install the skill and automatically link it to the project:
+#### Inside DeerFlow: text-only custom skills
+
+The `skill_manage` tool is available **only when the operator enables
+`skill_evolution.enabled` (default: `false`)**. Check the actual available tools;
+do not assume it is present merely because this is DeerFlow.
+
+When it is available and the user authorizes creating a text-only custom skill,
+use `skill_manage(action="create", name=..., content=...)` for valid `SKILL.md`
+content, `action="edit"` to replace it, and `action="write_file", path=...,
+content=...` for text supporting files. These calls use the caller's per-user
+skill storage and normal validation/security scans. Check each result before
+reporting success.
+
+This is not an archive installer or an atomic multi-file import. It cannot
+preserve arbitrary binary assets (images, fonts, compiled files, etc.) through
+text `content` arguments. Do not silently omit those resources or claim a
+complete third-party package was installed by copying only its instructions.
+
+#### Inside DeerFlow: complete skill packages
+
+For a complete `.skill` archive, direct the user to **Capability Center > Skills >
+Community** and select **Install .skill**. It installs into **My skills** through the existing
+archive validation and security checks. The install/upload routes require
+administrator authorization; being able to chat does not grant permission to
+import. If the user lacks permission, ask them to contact their administrator.
+
+If `skill_manage` is unavailable or a required operation is not permitted,
+explain that limitation and offer the authorized archive-import/operator route.
+You may help prepare a package for review, but a sandbox file is only an artifact,
+not an installed skill. Do not bypass authorization or change mounts to install.
+
+#### On the host: operator-managed repository checkout
+
+Only for an operator intentionally managing the host checkout, run the bundled
+helper **from the DeerFlow repository root or a nested directory**:
 
 ```bash
 bash /path/to/skill/scripts/install-skill.sh <owner/repo@skill-name>
 ```
 
-For example, if the user wants to install `vercel-react-best-practices`:
-
-```bash
-bash /path/to/skill/scripts/install-skill.sh vercel-labs/agent-skills@vercel-react-best-practices
-```
-
-The script will install the skill globally to `skills/custom/`
+It uses `npx skills add ... -g -y` to install under the host's
+`$HOME/.agents/skills/<skill-name>` and links that directory into the checkout's
+`skills/custom/`. This is operator-managed repository configuration, not a
+per-user DeerFlow installation. Without the checkout marker it exits nonzero
+with a diagnostic before invoking the installer.
 
 ## Common Skill Categories
 
@@ -125,7 +172,9 @@ If no relevant skills exist:
 
 1. Acknowledge that no existing skill was found
 2. Offer to help with the task directly using your general capabilities
-3. Suggest the user could create their own skill with `npx skills init`
+3. Offer to create a text-only skill with `skill_manage` if available in DeerFlow,
+   or help prepare a `.skill` archive for authorized import. Outside DeerFlow,
+   the user can use `npx skills init` in their own development environment.
 
 Example:
 
@@ -133,6 +182,6 @@ Example:
 I searched for skills related to "xyz" but didn't find any matches.
 I can still help you with this task directly! Would you like me to proceed?
 
-If this is something you do often, you could create your own skill:
-npx skills init my-xyz-skill
+If this is something you do often, I can help prepare a custom skill using
+the creation or import options available in your environment.
 ```

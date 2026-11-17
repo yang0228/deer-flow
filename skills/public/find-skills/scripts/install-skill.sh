@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# Install a skill and link it to the project's skills/custom directory
-# Usage: ./skills/install-skill.sh <owner/repo@skill-name>
-# Example: ./skills/install-skill.sh vercel-labs/agent-skills@vercel-react-best-practices
+# Host-only helper: install globally and link into a DeerFlow repository checkout.
+# Run from the checkout or a nested directory, not an isolated agent sandbox.
+# Usage: bash /path/to/find-skills/scripts/install-skill.sh <owner/repo@skill-name>
 
 set -e
 
 if [[ -z "$1" ]]; then
-  echo "Usage: $0 <owner/repo@skill-name>"
-  echo "Example: $0 vercel-labs/agent-skills@vercel-react-best-practices"
+  echo "Usage: $0 <owner/repo@skill-name>" >&2
+  echo "Example: $0 vercel-labs/agent-skills@vercel-react-best-practices" >&2
   exit 1
 fi
 
@@ -17,8 +17,8 @@ FULL_SKILL_NAME="$1"
 # Extract skill name (the part after @)
 SKILL_NAME="${FULL_SKILL_NAME##*@}"
 
-if [[ -z "$SKILL_NAME" || "$SKILL_NAME" == "$FULL_SKILL_NAME" ]]; then
-  echo "Error: Invalid skill format. Expected: owner/repo@skill-name"
+if [[ ! "$FULL_SKILL_NAME" =~ ^[^/@[:space:]]+/[^/@[:space:]]+@[^/@[:space:]]+$ ]]; then
+  echo "Error: Invalid skill format. Expected: owner/repo@skill-name" >&2
   exit 1
 fi
 
@@ -36,10 +36,9 @@ find_project_root() {
   return 1
 }
 
-PROJECT_ROOT=$(find_project_root)
-
-if [[ -z "$PROJECT_ROOT" ]]; then
-  echo "Error: Could not find project root (deer-flow.code-workspace not found)"
+if ! PROJECT_ROOT=$(find_project_root); then
+  echo "Error: This host-only helper requires a DeerFlow repository checkout (deer-flow.code-workspace not found)." >&2
+  echo "Run it on the host from the checkout or a nested directory. In DeerFlow, use Capability Center > Skills > Community to import a .skill archive with administrator permissions." >&2
   exit 1
 fi
 
@@ -51,7 +50,7 @@ npx skills add "$FULL_SKILL_NAME" -g -y > /dev/null 2>&1
 
 # Step 2: Verify installation
 if [[ ! -d "$SKILL_SOURCE" ]]; then
-  echo "Skill '$SKILL_NAME' installation failed"
+  echo "Skill '$SKILL_NAME' installation failed" >&2
   exit 1
 fi
 
